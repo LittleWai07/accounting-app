@@ -149,6 +149,50 @@ h1,h2,h3{text-wrap:balance}
 .src-foot .flow{display:flex;gap:8px}
 .src-foot .in{color:var(--accent)}
 
+/* daily budget */
+.budget{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.budget .sec-title{margin:0}
+.bud-row{display:flex;flex-direction:column;gap:6px;min-width:0}
+.bud-top{display:flex;align-items:baseline;gap:8px;min-width:0}
+.bud-top .code{background:var(--accent-soft);color:var(--accent)}
+.bud-val{display:flex;align-items:baseline;gap:4px;min-width:0;white-space:nowrap;overflow:hidden}
+.bud-val b{font-size:19px;font-weight:800}
+.bud-val span{color:var(--muted);font-size:13px}
+.bud-row.over .bud-val b{color:var(--danger)}
+.bud-row .bar i{background:var(--accent)}
+.bud-row.warn .bar i{background:var(--warn)}
+.bud-row.over .bar i{background:var(--danger)}
+.bud-top .tag{margin-left:auto}
+
+/* trend chart */
+.chart-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:24px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.chart-head h2{font-size:17px;font-weight:700}
+.chart-head .range{font-size:12.5px;color:var(--muted);font-weight:400;margin-left:6px}
+.chart-ctrl{display:flex;gap:8px;flex-wrap:wrap}
+.chart-ctrl .seg{align-self:auto}
+.chart-stats{display:flex;gap:6px 22px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.chart-stats b{display:block;font-size:17px;color:var(--fg);font-weight:800;white-space:nowrap}
+.chart-stats .neg{color:var(--danger)}
+.lg{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle;background:var(--c)}
+.lg.dash{width:14px;height:0;border-radius:0;background:none;border-top:2px dashed var(--c)}
+.chart-wrap .bud-ln{fill:none;stroke:var(--muted);stroke-width:1.6;stroke-dasharray:6 5;opacity:.55}
+.chart-wrap{position:relative;width:100%;min-width:0;touch-action:pan-y}
+.chart-wrap svg{display:block;width:100%;height:auto;overflow:visible}
+.chart-wrap .ax{fill:var(--muted);font-size:10.5px;font-family:var(--font-num)}
+.chart-wrap .gl{stroke:var(--line);stroke-width:1}
+.chart-wrap .guide{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;opacity:0;transition:opacity .15s}
+.chart-wrap .guide.show{opacity:1}
+.chart-wrap .pt{transition:r .15s}
+.chart-wrap .empty-t{fill:var(--muted);font-size:13px;font-family:var(--font-body)}
+.chart-wrap .draw{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:draw .9s cubic-bezier(.3,.7,.2,1) forwards}
+.chart-wrap .fade{opacity:0;animation:fadeOnly .6s .3s ease forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes fadeOnly{to{opacity:1}}
+.chart-tip{position:absolute;top:0;pointer-events:none;background:var(--fg);color:var(--bg);font-size:12px;line-height:1.5;padding:6px 10px;border-radius:9px;white-space:nowrap;opacity:0;transition:opacity .15s;z-index:2}
+.chart-tip.show{opacity:1}
+.chart-tip b{font-weight:600}
+
 /* ledger */
 .main-col{min-width:0}
 .list-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
@@ -326,6 +370,16 @@ textarea.input{resize:vertical;min-height:64px}
 .toast.error{background:var(--danger);color:#fff}
 .toast button{background:none;border:0;color:var(--accent);font-weight:700;padding:2px 4px}
 
+/* 嵌入模式：頁面被放進「自動撐高」的預覽框時，固定在畫面底部的元素會跑到很長頁面的最底下，
+   所以改成在使用者點擊的位置附近顯示彈窗，並把新增按鈕放回頂部 */
+html.embedded .fab{display:none}
+html.embedded .hide-mobile{display:inline-flex}
+html.embedded .modal{position:absolute;inset:0 0 auto 0;height:var(--doc-h,100%);align-items:flex-start;padding:0 12px}
+html.embedded .sheet{margin-top:var(--sheet-top,16px);max-width:520px;border-radius:22px;max-height:none;overflow:visible;padding:20px 18px;transform:translateY(14px) scale(.97);opacity:0;transition:transform .3s cubic-bezier(.2,.8,.2,1),opacity .22s}
+html.embedded .modal.show .sheet{transform:none;opacity:1}
+html.embedded .grip{display:none}
+html.embedded .toasts{position:absolute;top:var(--toast-top,16px);bottom:auto}
+
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
@@ -354,6 +408,10 @@ textarea.input{resize:vertical;min-height:64px}
       <div class="label" data-i18n="balanceTotal">可用餘額合計</div>
       <div class="sum-lines" id="sumLines"></div>
     </section>
+    <section class="budget" id="budgetBox" hidden>
+      <h2 class="sec-title"><span data-i18n="todayBudget">今日預算</span> <span class="muted small" style="letter-spacing:0;font-weight:500" data-i18n="budgetLeft">剩餘 / 預算</span></h2>
+      <div id="budgetList" style="display:flex;flex-direction:column;gap:12px"></div>
+    </section>
     <section>
       <h2 class="sec-title"><span data-i18n="sources">存錢來源</span> <button class="link" id="btnManage" type="button" data-i18n="manageSources">管理來源</button></h2>
       <div class="sources" id="sourceList"></div>
@@ -361,6 +419,20 @@ textarea.input{resize:vertical;min-height:64px}
   </aside>
 
   <section class="main-col">
+    <div class="chart-card" id="chartCard" hidden>
+      <div class="chart-head">
+        <h2><span data-i18n="trend">收支趨勢</span><span class="range" id="chartRange"></span></h2>
+        <div class="chart-ctrl">
+          <div class="seg" id="chartCur" role="radiogroup" data-i18n-aria="currency"></div>
+          <div class="seg text" id="chartPeriod" role="radiogroup"></div>
+        </div>
+      </div>
+      <div class="chart-stats num" id="chartStats"></div>
+      <div class="chart-wrap" id="chartWrap">
+        <svg id="chartSvg" role="img"></svg>
+        <div class="chart-tip num" id="chartTip"></div>
+      </div>
+    </div>
     <div class="list-head">
       <h2 data-i18n="ledger">帳目紀錄</h2>
       <span class="muted small num" id="entryCount"></span>
@@ -504,6 +576,14 @@ textarea.input{resize:vertical;min-height:64px}
         <button class="btn dashed" type="button" id="btnAddSource" data-i18n="addSource">＋ 新增來源</button>
       </div>
       <div class="block">
+        <div class="block-head">
+          <h4 data-i18n="budget">單日預算</h4>
+          <p data-i18n="budgetHint"></p>
+        </div>
+        <div class="bal-rows" id="budRows" style="padding-left:0"></div>
+        <button class="link add-cur" type="button" id="btnAddBudget" data-i18n="addBudget" style="margin-left:0">＋ 新增預算</button>
+      </div>
+      <div class="block">
         <div class="field" style="max-width:240px">
           <label for="fDefCur" data-i18n="defCur">預設貨幣</label>
           <input id="fDefCur" class="input num" list="curList" maxlength="6" placeholder="MOP" style="text-transform:uppercase;font-weight:700">
@@ -583,6 +663,12 @@ const I18N = {
     errCurDup:(n,c)=>`「${n}」的 ${c} 重複了，同一來源每種貨幣只能有一行`, errBalNum:(n,c)=>`「${n}」的 ${c} 餘額不是有效數字`,
     toastSetupDone:'設定完成，開始記帳吧', toastSaved:'設定已儲存', storageErr:'無法寫入瀏覽器儲存空間，資料只會保留到關閉頁面為止',
     defaultSources:['現金','銀行卡','電子錢包'], defaultPurposes:['餐飲','交通','購物','日用品','娛樂','醫療'], defaultOrigins:['工作','兼職','家庭','利息','退款','其他'],
+    budget:'單日預算', todayBudget:'今日預算', budgetLeft:'剩餘 / 預算', overBudget:'已超出',
+    budgetHint:'可以不設定。每種貨幣的預算各自獨立，只計算當天用該貨幣的支出（含轉賬手續費）；超出預算仍可繼續記帳。',
+    addBudget:'＋ 新增預算', budgetAmt:'每日預算', errBudgetCur:'預算的貨幣不能留空', errBudgetDup:c=>`${c} 的預算重複了`, errBudgetAmt:c=>`${c} 的預算必須大於 0`,
+    budgetDayHint:(c,a,neg)=>`當天 ${c} 預算剩餘 ${a}${neg?'（已超出）':''}`, removeBudget:'移除此預算',
+    budgetLine:'預算', budgetPer:{day:'每日預算',week:'每週預算',month:'本月預算'}, trend:'收支趨勢', periodDay:'日', periodWeek:'週', periodMonth:'月', income:'收入', net:'淨額',
+    rangeDay:'近 14 天', rangeWeek:'近 12 週', rangeMonth:'近 12 個月', chartEmpty:'這段期間沒有收支紀錄', weekRange:(a,b)=>`${a} – ${b}`,
     curNames:{MOP:'澳門元',HKD:'港元',CNY:'人民幣',TWD:'新台幣',USD:'美元',JPY:'日圓',KRW:'韓圜',EUR:'歐元',GBP:'英鎊',SGD:'新加坡元',THB:'泰銖'}
   },
   'zh-Hans': {
@@ -622,6 +708,12 @@ const I18N = {
     errCurDup:(n,c)=>`「${n}」的 ${c} 重复了，同一来源每种货币只能有一行`, errBalNum:(n,c)=>`「${n}」的 ${c} 余额不是有效数字`,
     toastSetupDone:'设置完成，开始记账吧', toastSaved:'设置已保存', storageErr:'无法写入浏览器存储空间，数据只会保留到关闭页面为止',
     defaultSources:['现金','银行卡','电子钱包'], defaultPurposes:['餐饮','交通','购物','日用品','娱乐','医疗'], defaultOrigins:['工作','兼职','家庭','利息','退款','其他'],
+    budget:'单日预算', todayBudget:'今日预算', budgetLeft:'剩余 / 预算', overBudget:'已超出',
+    budgetHint:'可以不设置。每种货币的预算各自独立，只计算当天用该货币的支出（含转账手续费）；超出预算仍可继续记账。',
+    addBudget:'＋ 新增预算', budgetAmt:'每日预算', errBudgetCur:'预算的货币不能为空', errBudgetDup:c=>`${c} 的预算重复了`, errBudgetAmt:c=>`${c} 的预算必须大于 0`,
+    budgetDayHint:(c,a,neg)=>`当天 ${c} 预算剩余 ${a}${neg?'（已超出）':''}`, removeBudget:'移除此预算',
+    budgetLine:'预算', budgetPer:{day:'每日预算',week:'每周预算',month:'本月预算'}, trend:'收支趋势', periodDay:'日', periodWeek:'周', periodMonth:'月', income:'收入', net:'净额',
+    rangeDay:'近 14 天', rangeWeek:'近 12 周', rangeMonth:'近 12 个月', chartEmpty:'这段期间没有收支记录', weekRange:(a,b)=>`${a} – ${b}`,
     curNames:{MOP:'澳门元',HKD:'港元',CNY:'人民币',TWD:'新台币',USD:'美元',JPY:'日元',KRW:'韩元',EUR:'欧元',GBP:'英镑',SGD:'新加坡元',THB:'泰铢'}
   },
   'en': {
@@ -661,6 +753,12 @@ const I18N = {
     errCurDup:(n,c)=>`“${n}” lists ${c} twice. Each currency can appear once per source`, errBalNum:(n,c)=>`The ${c} balance for “${n}” isn’t a valid number`,
     toastSetupDone:'All set. Start tracking!', toastSaved:'Settings saved', storageErr:'Can’t write to browser storage. Data will be lost when this page closes',
     defaultSources:['Cash','Bank card','E-wallet'], defaultPurposes:['Food','Transport','Shopping','Household','Fun','Health'], defaultOrigins:['Salary','Part-time','Family','Interest','Refund','Other'],
+    budget:'Daily budget', todayBudget:'TODAY’S BUDGET', budgetLeft:'left / budget', overBudget:'Over budget',
+    budgetHint:'Optional. Each currency has its own budget and only counts that day’s spending in that currency (transfer fees included). You can keep adding entries after going over.',
+    addBudget:'+ Add budget', budgetAmt:'Per day', errBudgetCur:'Budget currency can’t be empty', errBudgetDup:c=>`${c} has more than one budget`, errBudgetAmt:c=>`The ${c} budget must be greater than 0`,
+    budgetDayHint:(c,a,neg)=>`${c} budget left that day: ${a}${neg?' (over)':''}`, removeBudget:'Remove this budget',
+    budgetLine:'Budget', budgetPer:{day:'Daily budget',week:'Weekly budget',month:'This month’s budget'}, trend:'Spending & income', periodDay:'Day', periodWeek:'Week', periodMonth:'Month', income:'Income', net:'Net',
+    rangeDay:'Last 14 days', rangeWeek:'Last 12 weeks', rangeMonth:'Last 12 months', chartEmpty:'Nothing recorded in this period', weekRange:(a,b)=>`${a} – ${b}`,
     curNames:{MOP:'Macau pataca',HKD:'Hong Kong dollar',CNY:'Chinese yuan',TWD:'New Taiwan dollar',USD:'US dollar',JPY:'Japanese yen',KRW:'Korean won',EUR:'Euro',GBP:'British pound',SGD:'Singapore dollar',THB:'Thai baht'}
   }
 };
@@ -696,7 +794,8 @@ function applyTheme(){
   meta.content = getComputedStyle(root).getPropertyValue('--bg').trim();
   if (!$('#settingsModal').hidden) renderPrefs();
 }
-darkMQ.addEventListener ? darkMQ.addEventListener('change', applyTheme) : darkMQ.addListener(applyTheme);
+const onScheme = () => { applyTheme(); if (sources) renderChart(); };
+darkMQ.addEventListener ? darkMQ.addEventListener('change', onScheme) : darkMQ.addListener(onScheme);
 
 /* ---------- 儲存 ---------- */
 const KEY = { sources: 'ledger.sources.v1', entries: 'ledger.entries.v1', settings: 'ledger.settings.v1' };
@@ -738,6 +837,7 @@ function load(){
   if (!I18N[settings.lang]) settings.lang = 'zh-Hant';
   if (!PALETTES[settings.accent]) settings.accent = 'teal';
   if (!['system','light','dark'].includes(settings.mode)) settings.mode = 'system';
+  if (!Array.isArray(settings.budgets)) settings.budgets = [];
   // 舊版資料自動轉換
   const legacy = normCur(settings.currency) || settings.defaultCur || 'MOP';
   let migrated = false;
@@ -788,6 +888,18 @@ const remainOf = (s, b, excludeId) => { const f = flowsOf(s.id, b.cur, excludeId
 /* 「花掉」的錢：支出 + 轉賬手續費（都以 e.cur 計） */
 const spendOf = e => e.type === 'expense' ? e.amount : (e.type === 'transfer' ? (e.fee || 0) : 0);
 const topupOf = e => e.type === 'topup' ? e.amount : 0;
+
+/* 單日預算：每種貨幣獨立，只計當天該貨幣的支出 + 手續費 */
+const todayYmd = () => toLocalInput(new Date()).slice(0, 10);
+const budgetOf = cur => (settings.budgets || []).find(b => b.cur === cur);
+function daySpend(cur, ymd, excludeId){
+  let s = 0;
+  for (const e of entries){
+    if (e.id === excludeId || e.cur !== cur || !e.datetime.startsWith(ymd) || !valid(e)) continue;
+    s += spendOf(e);
+  }
+  return r2(s);
+}
 
 function curOrder(list){
   const seen = [];
@@ -917,6 +1029,184 @@ function renderSources(){
   }));
 }
 
+const prevBud = {};
+function renderBudget(){
+  const list = settings.budgets || [];
+  $('#budgetBox').hidden = !list.length;
+  if (!list.length) return;
+  const ymd = todayYmd();
+  $('#budgetList').innerHTML = curOrder(list.map(b => b.cur)).map(c => {
+    const b = budgetOf(c), left = r2(b.amount - daySpend(c, ymd));
+    const pct = Math.max(0, Math.min(1, left / b.amount));
+    const cls = left < 0 ? 'over' : (pct < .2 ? 'warn' : '');
+    return `<div class="bud-row ${cls}">
+      <div class="bud-top"><span class="code">${esc(c)}</span><span class="bud-val num"><b>${fmtN(left, c)}</b><span>/ ${fmtN(b.amount, c)}</span></span>${left < 0 ? `<span class="tag neg">${t('overBudget')}</span>` : ''}</div>
+      <div class="bar"><i data-bud="${esc(c)}" data-w="${(pct*100).toFixed(1)}" style="width:${prevBud[c] ?? 0}%"></i></div>
+    </div>`;
+  }).join('');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.querySelectorAll('#budgetList .bar i').forEach(i => { i.style.width = i.dataset.w + '%'; prevBud[i.dataset.bud] = i.dataset.w; });
+  }));
+}
+
+/* ---------- 收支趨勢折線圖（日 / 週 / 月） ---------- */
+let chartCur = null;
+let chartAnimate = true;
+let chartData = null;
+const PERIODS = ['day', 'week', 'month'];
+const parseDT = s => { const [ds, ts = '0:0'] = s.split('T'); const [y, m, d] = ds.split('-').map(Number); const [h, mi] = ts.split(':').map(Number); return new Date(y, m - 1, d, h || 0, mi || 0); };
+const md = d => `${d.getMonth() + 1}/${d.getDate()}`;
+function buckets(period){
+  const now = new Date(), out = [];
+  if (period === 'day'){
+    const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    for (let i = 13; i >= 0; i--){
+      const s = new Date(t0); s.setDate(t0.getDate() - i);
+      const e = new Date(s); e.setDate(s.getDate() + 1);
+      out.push({ start: s, end: e, label: md(s), tip: s.toLocaleDateString(LOCALE[lang], { month: 'short', day: 'numeric', weekday: 'short' }) });
+    }
+  } else if (period === 'week'){
+    const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    t0.setDate(t0.getDate() - ((t0.getDay() + 6) % 7));   // 週一開始
+    for (let i = 11; i >= 0; i--){
+      const s = new Date(t0); s.setDate(t0.getDate() - i * 7);
+      const e = new Date(s); e.setDate(s.getDate() + 7);
+      const last = new Date(e); last.setDate(e.getDate() - 1);
+      out.push({ start: s, end: e, label: md(s), tip: t('weekRange', md(s), md(last)) });
+    }
+  } else {
+    for (let i = 11; i >= 0; i--){
+      const s = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const e = new Date(s.getFullYear(), s.getMonth() + 1, 1);
+      out.push({ start: s, end: e, label: s.toLocaleDateString(LOCALE[lang], { month: 'short' }), tip: s.toLocaleDateString(LOCALE[lang], { year: 'numeric', month: 'long' }) });
+    }
+  }
+  return out;
+}
+function niceMax(v){
+  if (!(v > 0)) return 100;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const f of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (f * mag >= v) return f * mag;
+  return 10 * mag;
+}
+const axisNum = v => v >= 10000 ? (v / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 }) + 'k' : v.toLocaleString('en-US', { maximumFractionDigits: v < 10 ? 1 : 0 });
+
+function renderChart(){
+  const curs = curOrder(sources.flatMap(s => s.balances.map(b => b.cur)));
+  $('#chartCard').hidden = !curs.length;
+  if (!curs.length) return;
+  if (!curs.includes(chartCur)) chartCur = curs.includes(settings.defaultCur) ? settings.defaultCur : curs[0];
+  const period = PERIODS.includes(settings.chartPeriod) ? settings.chartPeriod : 'day';
+
+  $('#chartCur').hidden = curs.length < 2;
+  $('#chartCur').innerHTML = curs.map(c => `<button type="button" role="radio" aria-checked="${c === chartCur}" class="${c === chartCur ? 'on' : ''}" data-ccur="${esc(c)}">${esc(c)}</button>`).join('');
+  $('#chartPeriod').innerHTML = PERIODS.map(p => { const k = 'period' + p[0].toUpperCase() + p.slice(1); return `<button type="button" role="radio" aria-checked="${p === period}" class="${p === period ? 'on' : ''}" data-period="${p}">${t(k)}</button>`; }).join('');
+  $('#chartRange').textContent = t({ day: 'rangeDay', week: 'rangeWeek', month: 'rangeMonth' }[period]);
+
+  // 統計每個區間的支出（含手續費）與收入（增值）
+  const bk = buckets(period);
+  bk.forEach(b => { b.exp = 0; b.inc = 0; });
+  const first = bk[0].start, endAll = bk[bk.length - 1].end;
+  for (const e of entries){
+    if (e.cur !== chartCur || !valid(e)) continue;
+    const d = parseDT(e.datetime);
+    if (d < first || d >= endAll) continue;
+    const b = bk.find(x => d >= x.start && d < x.end);
+    if (b){ b.exp += spendOf(e); b.inc += topupOf(e); }
+  }
+  bk.forEach(b => { b.exp = r2(b.exp); b.inc = r2(b.inc); });
+  // 有設定該幣別的單日預算：日 = 預算，週 = 預算 × 7，月 = 預算 × 當月天數
+  const bud = budgetOf(chartCur);
+  bk.forEach(b => { b.bud = bud ? r2(bud.amount * Math.round((b.end - b.start) / 86400000)) : 0; });
+  const totExp = r2(bk.reduce((a, b) => a + b.exp, 0)), totInc = r2(bk.reduce((a, b) => a + b.inc, 0)), net = r2(totInc - totExp);
+
+  // 顏色：支出用警示紅；收入用主題色（主題色本身偏紅 / 橙時改用青綠以免撞色）
+  const cs = getComputedStyle(root);
+  const expC = cs.getPropertyValue('--danger').trim();
+  const incC = ['coral', 'amber'].includes(settings.accent) ? PALETTES.teal[isDark() ? 1 : 0][0] : cs.getPropertyValue('--accent').trim();
+  $('#chartStats').innerHTML = `
+    <span><span class="lg" style="--c:${expC}"></span>${t('sumOut')}<b>${fmt(totExp, chartCur)}</b></span>
+    <span><span class="lg" style="--c:${incC}"></span>${t('income')}<b>${fmt(totInc, chartCur)}</b></span>
+    ${bud ? `<span><span class="lg dash" style="--c:var(--muted)"></span>${t('budgetPer')[period]}<b>${fmt(bk[bk.length - 1].bud, chartCur)}</b></span>` : ''}
+    <span>${t('net')}<b class="${net < 0 ? 'neg' : ''}">${net > 0 ? '+' : ''}${fmt(net, chartCur)}</b></span>`;
+
+  // 繪圖
+  const wrap = $('#chartWrap'), svg = $('#chartSvg');
+  const W = Math.max(280, Math.round(wrap.clientWidth || 600));
+  const H = W < 520 ? 200 : 230;
+  const padL = 40, padR = 10, padT = 12, padB = 24;
+  const n = bk.length, max = niceMax(Math.max(...bk.map(b => Math.max(b.exp, b.inc, b.bud))));
+  const x = i => padL + i * (W - padL - padR) / (n - 1);
+  const y = v => padT + (1 - v / max) * (H - padT - padB);
+  const base = y(0);
+  let g = '';
+  for (let k = 0; k <= 4; k++){
+    const v = max * k / 4, yy = y(v).toFixed(1);
+    g += `<line class="gl" x1="${padL}" x2="${W - padR}" y1="${yy}" y2="${yy}"/><text class="ax" x="${padL - 6}" y="${(+yy + 3.5).toFixed(1)}" text-anchor="end">${axisNum(v)}</text>`;
+  }
+  const step = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - padL - padR) / 46))));
+  bk.forEach((b, i) => { if ((n - 1 - i) % step === 0) g += `<text class="ax" x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${esc(b.label)}</text>`; });
+  const line = key => bk.map((b, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(b[key]).toFixed(1)}`).join(' ');
+  const empty = !totExp && !totInc;
+  const anim = chartAnimate && !reduceMotion;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('aria-label', `${t('trend')} ${chartCur}: ${t('sumOut')} ${fmtN(totExp, chartCur)}, ${t('income')} ${fmtN(totInc, chartCur)}`);
+  const budLn = bud ? `<path class="bud-ln ${anim ? 'fade' : ''}" d="${line('bud')}"/>` : '';
+  svg.innerHTML = g + budLn + (empty
+    ? `<text class="empty-t" x="${(padL + W - padR) / 2}" y="${(padT + base) / 2}" text-anchor="middle">${esc(t('chartEmpty'))}</text>`
+    : `<path class="${anim ? 'fade' : ''}" d="${line('exp')} L${x(n - 1).toFixed(1)} ${base.toFixed(1)} L${x(0).toFixed(1)} ${base.toFixed(1)} Z" style="fill:${expC};fill-opacity:.1;stroke:none"/>
+       <path class="ln ${anim ? 'draw' : ''}" d="${line('inc')}" style="fill:none;stroke:${incC};stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round"/>
+       <path class="ln ${anim ? 'draw' : ''}" d="${line('exp')}" style="fill:none;stroke:${expC};stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round"/>
+       ${bk.map((b, i) => `<circle class="pt ${anim ? 'fade' : ''}" data-i="${i}" cx="${x(i).toFixed(1)}" cy="${y(b.inc).toFixed(1)}" r="${b.inc ? 2.6 : 0}" data-r0="${b.inc ? 2.6 : 0}" style="fill:var(--surface);stroke:${incC};stroke-width:2"/>
+         <circle class="pt ${anim ? 'fade' : ''}" data-i="${i}" cx="${x(i).toFixed(1)}" cy="${y(b.exp).toFixed(1)}" r="${b.exp ? 2.8 : 0}" data-r0="${b.exp ? 2.8 : 0}" style="fill:var(--surface);stroke:${expC};stroke-width:2"/>`).join('')}`)
+    + `<line class="guide" id="chartGuide" y1="${padT}" y2="${base.toFixed(1)}" x1="0" x2="0"/>
+       <rect id="chartHit" x="${padL - 6}" y="0" width="${W - padL - padR + 12}" height="${H}" fill="transparent"/>`;
+  if (anim) svg.querySelectorAll('.draw').forEach(p => p.style.setProperty('--len', Math.ceil(p.getTotalLength ? p.getTotalLength() : 2000)));
+  chartAnimate = false;
+  chartData = { bk, x, W, padL, padR, n, empty };
+  $('#chartTip').classList.remove('show');
+}
+
+function chartPoint(ev){
+  if (!chartData || chartData.empty) return;
+  const svg = $('#chartSvg'), rect = svg.getBoundingClientRect();
+  const sx = (ev.clientX - rect.left) * chartData.W / rect.width;
+  const { n, padL, padR, W, x, bk } = chartData;
+  const i = Math.max(0, Math.min(n - 1, Math.round((sx - padL) / ((W - padL - padR) / (n - 1)))));
+  const b = bk[i], px = x(i);
+  const guide = $('#chartGuide');
+  guide.setAttribute('x1', px); guide.setAttribute('x2', px); guide.classList.add('show');
+  svg.querySelectorAll('.pt').forEach(c => c.setAttribute('r', +c.dataset.i === i && +c.dataset.r0 > 0 ? 4.5 : c.dataset.r0));
+  const tip = $('#chartTip');
+  tip.innerHTML = `<b>${esc(b.tip)}</b><br>${t('sumOut')} ${fmt(b.exp, chartCur)}<br>${t('income')} ${fmt(b.inc, chartCur)}${b.bud ? `<br>${t('budgetLine')} ${fmt(b.bud, chartCur)}${b.exp > b.bud ? ` · ${t('overBudget')}` : ''}` : ''}`;
+  tip.classList.add('show');
+  const left = px * rect.width / W, tw = tip.offsetWidth;
+  tip.style.left = Math.max(0, Math.min(rect.width - tw, left - tw / 2)) + 'px';
+  tip.style.top = '-6px';
+}
+function chartLeave(){
+  $('#chartTip').classList.remove('show');
+  const g = $('#chartGuide'); if (g) g.classList.remove('show');
+  document.querySelectorAll('#chartSvg .pt').forEach(c => c.setAttribute('r', c.dataset.r0));
+}
+$('#chartWrap').addEventListener('pointermove', chartPoint);
+$('#chartWrap').addEventListener('pointerdown', chartPoint);
+$('#chartWrap').addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') chartLeave(); });
+document.addEventListener('pointerdown', e => { if (!e.target.closest('#chartWrap')) chartLeave(); });
+$('#chartPeriod').addEventListener('click', e => {
+  const b = e.target.closest('[data-period]'); if (!b) return;
+  settings.chartPeriod = b.dataset.period; saveSettings(); chartAnimate = true; renderChart();
+});
+$('#chartCur').addEventListener('click', e => {
+  const b = e.target.closest('[data-ccur]'); if (!b) return;
+  chartCur = b.dataset.ccur; chartAnimate = true; renderChart();
+});
+let chartW = 0, chartRT;
+window.addEventListener('resize', () => {
+  clearTimeout(chartRT);
+  chartRT = setTimeout(() => { const w = $('#chartWrap').clientWidth; if (w && w !== chartW){ chartW = w; renderChart(); } }, 150);
+});
+
 function renderFilters(){
   $('#typeFilter').innerHTML = ['all', ...TYPES].map(k => `<button type="button" role="tab" aria-selected="${filterType === k}" class="${filterType === k ? 'on' : ''}" data-type="${k}">${t(k)}</button>`).join('');
   const chips = [{ id: 'all', name: t('all') }, ...sources];
@@ -1011,15 +1301,40 @@ function renderEntries(){
 
 function render(){
   if (filterSource !== 'all' && !srcById(filterSource)) filterSource = 'all';
-  renderSummary(); renderSources(); renderFilters(); renderEntries();
+  renderSummary(); renderBudget(); renderSources(); renderChart(); renderFilters(); renderEntries();
+}
+
+/* ---------- 嵌入偵測 ---------- */
+let lastTapY = null;
+document.addEventListener('pointerdown', e => { lastTapY = e.pageY; }, true);
+document.addEventListener('click', e => { if (e.pageY) lastTapY = e.pageY; }, true);
+/* 視窗高度遠超螢幕高度 = 被放進自動撐高的框裡，fixed 定位不再對應可見範圍 */
+function checkEmbedded(){
+  const scr = Math.max(screen.availHeight || 0, screen.height || 0) || 900;
+  const on = window.innerHeight > scr + 80;
+  root.classList.toggle('embedded', on);
+  return on;
+}
+window.addEventListener('resize', checkEmbedded);
+function anchorTop(){
+  const y = lastTapY != null ? lastTapY : (window.scrollY + 40);
+  return Math.max(12, y - 140);
 }
 
 /* ---------- 彈窗 ---------- */
 function openModal(m){
   m.hidden = false;
+  if (checkEmbedded()){
+    root.style.setProperty('--doc-h', Math.max(document.documentElement.scrollHeight, window.innerHeight) + 'px');
+    m.style.setProperty('--sheet-top', anchorTop() + 'px');
+  }
   void m.offsetWidth;
   m.classList.add('show');
   document.body.classList.add('locked');
+  if (root.classList.contains('embedded')){
+    const sheet = m.querySelector('.sheet');
+    setTimeout(() => { try { sheet.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch(e){} }, 60);
+  }
 }
 function closeModal(m){
   m.classList.remove('show');
@@ -1068,6 +1383,7 @@ function toast(msg, type = '', action){
     b.onclick = () => { action.fn(); kill(); };
     el.appendChild(b);
   }
+  if (checkEmbedded()) root.style.setProperty('--toast-top', anchorTop() + 'px');
   $('#toasts').appendChild(el);
   requestAnimationFrame(() => el.classList.add('show'));
   timer = setTimeout(kill, action ? 4500 : 2400);
@@ -1155,7 +1471,15 @@ function updateHint(){
   if (curType === 'expense'){
     const after = r2(rmA - a);
     hint.classList.toggle('neg', after < 0);
-    hint.textContent = a ? t('afterHint', sa.name, ba.cur, fmtN(after, ba.cur), after < 0) : t('currentHint', sa.name, ba.cur, fmtN(rmA, ba.cur));
+    let text = a ? t('afterHint', sa.name, ba.cur, fmtN(after, ba.cur), after < 0) : t('currentHint', sa.name, ba.cur, fmtN(rmA, ba.cur));
+    const bud = budgetOf(ba.cur);
+    if (bud){
+      const ymd = ($('#fDate').value || toLocalInput(new Date())).slice(0, 10);
+      const left = r2(bud.amount - daySpend(ba.cur, ymd, editingId) - a);
+      text += '\n' + t('budgetDayHint', ba.cur, `${fmtN(left, ba.cur)} / ${fmtN(bud.amount, ba.cur)}`, left < 0);
+      if (left < 0) hint.classList.add('neg');
+    }
+    hint.textContent = text;
   } else if (curType === 'topup'){
     hint.textContent = a ? t('topupHint', sa.name, ba.cur, fmtN(rmA + a, ba.cur)) : t('currentHint', sa.name, ba.cur, fmtN(rmA, ba.cur));
   } else {
@@ -1302,7 +1626,8 @@ $('#fCurTo').addEventListener('click', e => { const b = e.target.closest('[data-
 $('#fPurpose').addEventListener('input', renderQuick);
 $('#fOrigin').addEventListener('input', renderQuick);
 ['#fAmount', '#fFee', '#fReceived'].forEach(s => $(s).addEventListener('input', updateHint));
-$('#btnNow').addEventListener('click', () => { $('#fDate').value = toLocalInput(new Date()); });
+$('#btnNow').addEventListener('click', () => { $('#fDate').value = toLocalInput(new Date()); updateHint(); });
+$('#fDate').addEventListener('change', updateHint);
 $('#btnDeleteEntry').addEventListener('click', () => { const id = editingId; closeModal($('#entryModal')); deleteEntry(id); });
 
 /* ---------- 設定 ---------- */
@@ -1329,15 +1654,15 @@ $('#prefLang').addEventListener('click', e => {
   const oldDefaults = t('defaultSources');
   lang = settings.lang = b.dataset.lang; saveSettings();
   if (setupMode) draft.forEach((s, i) => { if (s.name === oldDefaults[i]) s.name = t('defaultSources')[i]; });
-  applyLang(); renderSettingsText(); renderPrefs(); renderSrcCards(); render();
+  applyLang(); renderSettingsText(); renderPrefs(); renderSrcCards(); renderBudRows(); render();
 });
 $('#prefMode').addEventListener('click', e => {
   const b = e.target.closest('[data-mode]'); if (!b) return;
-  settings.mode = b.dataset.mode; saveSettings(); applyTheme();
+  settings.mode = b.dataset.mode; saveSettings(); applyTheme(); renderChart();
 });
 $('#prefAccent').addEventListener('click', e => {
   const b = e.target.closest('[data-accent]'); if (!b) return;
-  settings.accent = b.dataset.accent; saveSettings(); applyTheme();
+  settings.accent = b.dataset.accent; saveSettings(); applyTheme(); renderChart();
 });
 
 function openSettings(isSetup){
@@ -1352,9 +1677,39 @@ function openSettings(isSetup){
   draft = sources.length
     ? sources.map(s => ({ id: s.id, name: s.name, removed: false, bals: s.balances.map(b => ({ id: b.id, cur: b.cur, orig: b.cur, amount: String(b.amount), removed: false })) }))
     : t('defaultSources').map(n => ({ id: uid(), name: n, removed: false, bals: [newBal(settings.defaultCur)] }));
-  renderSettingsText(); renderPrefs(); renderSrcCards();
+  budDraft = (settings.budgets || []).map(b => ({ id: uid(), cur: b.cur, amount: String(b.amount) }));
+  renderSettingsText(); renderPrefs(); renderSrcCards(); renderBudRows();
   openModal(m);
 }
+
+/* 單日預算設定 */
+let budDraft = [];
+function renderBudRows(){
+  $('#budRows').innerHTML = budDraft.map((b, i) => `
+    <div class="bal-row" data-bi="${i}">
+      <input class="input cur-in" id="bdc-${b.id}" data-k="cur" list="curList" value="${esc(b.cur)}" maxlength="6" placeholder="${t('curPh')}" aria-label="${t('currency')}" autocomplete="off" style="background:var(--surface-2)">
+      <input class="input num amt-in" id="bda-${b.id}" data-k="amount" type="text" inputmode="decimal" value="${esc(b.amount)}" placeholder="${t('budgetAmt')}" aria-label="${t('budgetAmt')}" autocomplete="off" style="background:var(--surface-2)">
+      <button type="button" class="icon-btn sm" data-act="bud-remove" aria-label="${t('removeBudget')}" title="${t('removeBudget')}">${ICON_X}</button>
+    </div>`).join('');
+}
+$('#budRows').addEventListener('input', e => {
+  const inp = e.target.closest('[data-k]'); if (!inp) return;
+  budDraft[+inp.closest('.bal-row').dataset.bi][inp.dataset.k] = inp.value;
+});
+$('#budRows').addEventListener('click', e => {
+  const btn = e.target.closest('[data-act="bud-remove"]'); if (!btn) return;
+  const row = btn.closest('.bal-row'), i = +row.dataset.bi;
+  row.classList.add('leaving');
+  setTimeout(() => { budDraft.splice(i, 1); renderBudRows(); }, 200);
+});
+$('#btnAddBudget').addEventListener('click', () => {
+  const used = budDraft.map(b => normCur(b.cur));
+  const pool = [defCur(), ...draft.flatMap(s => s.bals.map(b => normCur(b.cur))), 'MOP', 'HKD', 'CNY', 'USD'];
+  const cur = pool.find(c => c && !used.includes(c)) || '';
+  const b = { id: uid(), cur, amount: '' };
+  budDraft.push(b); renderBudRows();
+  setTimeout(() => $('#' + (cur ? 'bda-' : 'bdc-') + b.id)?.focus(), 30);
+});
 
 function renderSrcCards(){
   $('#srcCards').innerHTML = draft.map((s, si) => {
@@ -1444,6 +1799,17 @@ $('#btnSaveSettings').addEventListener('click', () => {
       if (v !== '' && !Number.isFinite(parseNum(v))) return err(t('errBalNum', name, c), 'ba-' + b.id);
     }
   }
+  const budgets = [];
+  for (const b of budDraft){
+    const c = normCur(b.cur), v = String(b.amount).trim();
+    if (!c && !v) continue;               // 空白行直接忽略
+    if (!c) return err(t('errBudgetCur'), 'bdc-' + b.id);
+    if (budgets.some(x => x.cur === c)) return err(t('errBudgetDup', c), 'bdc-' + b.id);
+    const n = parseNum(v);
+    if (!(n > 0)) return err(t('errBudgetAmt', c), 'bda-' + b.id);
+    budgets.push({ cur: c, amount: r2(n) });
+  }
+  settings.budgets = budgets;
   // 1. 刪除牽涉被移除來源 / 貨幣的紀錄（轉賬任何一方被移除都算）
   const gone = new Set();
   draft.forEach(s => s.bals.forEach(b => { if ((s.removed || b.removed) && b.orig) gone.add(s.id + '|' + b.orig); }));
@@ -1506,7 +1872,18 @@ $('#entryList').addEventListener('keydown', e => {
 });
 window.addEventListener('storage', e => { if (Object.values(KEY).includes(e.key)){ load(); applyTheme(); applyLang(); render(); } });
 
+/* 跨過午夜時刷新「今日」預算與日期 */
+let lastDay = todayYmd();
+const checkDay = () => { if (todayYmd() !== lastDay){ lastDay = todayYmd(); applyLang(); render(); } };
+setInterval(checkDay, 60000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkDay(); });
+
+/* 任何未預期的錯誤都直接提示，方便找出問題 */
+window.addEventListener('error', e => { try { toast('Error: ' + (e.message || e.error), 'error'); } catch(_){} });
+window.addEventListener('unhandledrejection', e => { try { toast('Error: ' + (e.reason && e.reason.message || e.reason), 'error'); } catch(_){} });
+
 /* ---------- 啟動 ---------- */
+checkEmbedded();
 load();
 applyTheme();
 applyLang();
