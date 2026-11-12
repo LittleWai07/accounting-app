@@ -166,6 +166,15 @@ h1,h2,h3{text-wrap:balance}
 
 /* trend chart */
 .chart-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:24px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.range-box{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)}
+.range-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:end;min-width:0}
+.range-row label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.range-row .input{padding:8px 10px;font-size:15px;background:var(--surface)}
+.range-row .dash{padding-bottom:9px;color:var(--muted)}
+@media (max-width:440px){.range-row{grid-template-columns:minmax(0,1fr)}.range-row .dash{display:none}}
+.range-err{color:var(--danger);font-size:12.5px}
+.range-err:empty{display:none}
+.quick button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);border-color:transparent}
 .chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .chart-head h2{font-size:17px;font-weight:700}
 .chart-head .range{font-size:12.5px;color:var(--muted);font-weight:400;margin-left:6px}
@@ -362,6 +371,16 @@ textarea.input{resize:vertical;min-height:64px}
 .danger-zone b{font-weight:500;font-size:14px}
 .danger-zone p{font-size:12.5px;color:var(--muted)}
 
+/* backup / export */
+.modal.io{z-index:55}
+.io-actions{display:flex;gap:8px;flex-wrap:wrap}
+.io-actions .btn svg{width:16px;height:16px}
+#ioText{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.5;min-height:180px;white-space:pre;overflow:auto}
+#ioText[readonly]{color:var(--muted)}
+.file-row{display:flex;align-items:center;gap:10px;min-width:0}
+.file-row span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.list-head .tools{display:flex;align-items:baseline;gap:8px}
+
 /* toast */
 .toasts{position:fixed;left:0;right:0;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:70;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;padding:0 16px}
 @media (min-width:900px){.toasts{bottom:28px}}
@@ -427,6 +446,15 @@ html.embedded .toasts{position:absolute;top:var(--toast-top,16px);bottom:auto}
           <div class="seg text" id="chartPeriod" role="radiogroup"></div>
         </div>
       </div>
+      <div class="range-box" id="chartRangeBox" hidden>
+        <div class="quick" id="chartPresets"></div>
+        <div class="range-row" id="chartCustom">
+          <label><span data-i18n="rangeFrom">開始</span><input type="datetime-local" id="chartFrom" class="input"></label>
+          <span class="dash" aria-hidden="true">–</span>
+          <label><span data-i18n="rangeTo">結束</span><input type="datetime-local" id="chartTo" class="input"></label>
+        </div>
+        <p class="range-err" id="chartRangeErr"></p>
+      </div>
       <div class="chart-stats num" id="chartStats"></div>
       <div class="chart-wrap" id="chartWrap">
         <svg id="chartSvg" role="img"></svg>
@@ -435,7 +463,7 @@ html.embedded .toasts{position:absolute;top:var(--toast-top,16px);bottom:auto}
     </div>
     <div class="list-head">
       <h2 data-i18n="ledger">帳目紀錄</h2>
-      <span class="muted small num" id="entryCount"></span>
+      <span class="tools"><span class="muted small num" id="entryCount"></span><button class="link" type="button" id="btnCsvQuick" data-i18n="csvShort">匯出 CSV</button></span>
     </div>
     <div class="filters">
       <div class="search">
@@ -545,7 +573,7 @@ html.embedded .toasts{position:absolute;top:var(--toast-top,16px);bottom:auto}
   <div class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
     <div class="grip"></div>
     <div class="sheet-head">
-      <div><h3 id="settingsTitle"></h3><p class="sub" id="settingsSub"></p></div>
+      <div><h3 id="settingsTitle"></h3><p class="sub" id="settingsSub"></p><button class="link" type="button" id="setupImport" data-i18n="haveBackup" style="margin:6px 0 0 -6px">有備份檔？匯入備份</button></div>
       <button class="icon-btn" type="button" data-close id="settingsX" data-i18n-aria="close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
     <div class="stack">
@@ -590,6 +618,18 @@ html.embedded .toasts{position:absolute;top:var(--toast-top,16px);bottom:auto}
           <span class="muted small" data-i18n="defCurHint"></span>
         </div>
       </div>
+      <div class="block" id="backupBlock">
+        <div class="block-head">
+          <h4 data-i18n="backup">備份與匯出</h4>
+          <p data-i18n="backupHint"></p>
+        </div>
+        <div class="io-actions">
+          <button class="btn sm" type="button" id="btnExportJson"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span data-i18n="exportJson">匯出備份 JSON</span></button>
+          <button class="btn sm" type="button" id="btnImportJson"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V9M7 14l5-5 5 5M5 4h14"/></svg><span data-i18n="importJson">匯入備份</span></button>
+          <button class="btn sm" type="button" id="btnExportCsv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/></svg><span data-i18n="exportCsv">匯出帳目 CSV</span></button>
+        </div>
+        <span class="muted small" id="lastExportInfo"></span>
+      </div>
       <div class="block danger-zone" id="dangerZone">
         <div><b data-i18n="resetTitle">清除所有資料</b><p data-i18n="resetText"></p></div>
         <button class="btn sm outline-danger" type="button" id="btnReset" data-i18n="resetBtn">清除</button>
@@ -604,13 +644,57 @@ html.embedded .toasts{position:absolute;top:var(--toast-top,16px);bottom:auto}
   </div>
 </div>
 
+<!-- 匯出 / 匯入彈窗 -->
+<div class="modal io" id="ioModal" hidden>
+  <div class="backdrop" data-close></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ioTitle">
+    <div class="grip"></div>
+    <div class="sheet-head">
+      <div><h3 id="ioTitle"></h3><p class="sub num" id="ioSub"></p></div>
+      <button class="icon-btn" type="button" data-close data-i18n-aria="close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="stack">
+      <div class="file-row" id="ioFileRow">
+        <button class="btn sm" type="button" id="btnChooseFile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V9M7 14l5-5 5 5M5 4h14"/></svg><span data-i18n="chooseFile">選擇檔案</span></button>
+        <span class="muted small" id="ioFileName"></span>
+        <input type="file" id="ioFile" accept=".json,application/json,text/plain" hidden>
+      </div>
+      <div id="csvOpts" class="stack" style="gap:14px">
+        <div class="field">
+          <span class="lbl" data-i18n="csvRangeLbl">日期範圍</span>
+          <div class="seg text" id="csvRange" role="radiogroup"></div>
+          <div class="range-row" id="csvCustom">
+          <label><span data-i18n="rangeFrom">開始</span><input type="datetime-local" id="csvFrom" class="input"></label>
+          <span class="dash" aria-hidden="true">–</span>
+          <label><span data-i18n="rangeTo">結束</span><input type="datetime-local" id="csvTo" class="input"></label>
+        </div>
+          <p class="range-err" id="csvRangeErr"></p>
+        </div>
+        <div class="field">
+          <span class="lbl" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span data-i18n="csvColsLbl">匯出欄位</span><button class="link" type="button" id="csvAll"></button></span>
+          <div class="quick" id="csvColsBox"></div>
+        </div>
+      </div>
+      <textarea id="ioText" class="input" rows="9" spellcheck="false" autocomplete="off" aria-labelledby="ioTitle"></textarea>
+      <p class="field-hint" id="ioNote"></p>
+      <p class="form-error" id="ioError" role="alert"></p>
+      <div class="sheet-actions">
+        <span class="spacer"></span>
+        <button class="btn" type="button" data-close id="ioClose"></button>
+        <button class="btn" type="button" id="btnCopy" data-i18n="copy">複製</button>
+        <button class="btn primary" type="button" id="btnIoMain"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 確認彈窗 -->
 <div class="modal confirm" id="confirmModal" hidden>
   <div class="backdrop" data-cancel></div>
   <div class="sheet narrow" role="alertdialog" aria-modal="true" aria-labelledby="cTitle" aria-describedby="cMsg">
     <div class="grip"></div>
     <div class="stack">
-      <div><h3 id="cTitle" style="font-size:18px"></h3><p id="cMsg" class="muted" style="margin-top:6px;font-size:14px"></p></div>
+      <div><h3 id="cTitle" style="font-size:18px"></h3><p id="cMsg" class="muted num" style="margin-top:6px;font-size:14px;white-space:pre-line;overflow-wrap:anywhere"></p></div>
       <div class="sheet-actions"><span class="spacer"></span><button class="btn" type="button" data-cancel data-i18n="cancel">取消</button><button class="btn danger" type="button" id="cOk"></button></div>
     </div>
   </div>
@@ -667,6 +751,27 @@ const I18N = {
     budgetHint:'可以不設定。每種貨幣的預算各自獨立，只計算當天用該貨幣的支出（含轉賬手續費）；超出預算仍可繼續記帳。',
     addBudget:'＋ 新增預算', budgetAmt:'每日預算', errBudgetCur:'預算的貨幣不能留空', errBudgetDup:c=>`${c} 的預算重複了`, errBudgetAmt:c=>`${c} 的預算必須大於 0`,
     budgetDayHint:(c,a,neg)=>`當天 ${c} 預算剩餘 ${a}${neg?'（已超出）':''}`, removeBudget:'移除此預算',
+    backup:'備份與匯出', backupHint:'資料只存在這個瀏覽器裡。定期匯出 JSON 備份，清除瀏覽器資料或換裝置時可完整還原來源、紀錄和設定；CSV 方便用 Excel 查看所有帳目。',
+    exportJson:'匯出備份 JSON', importJson:'匯入備份', exportCsv:'匯出帳目 CSV', csvShort:'匯出 CSV', haveBackup:'有備份檔？匯入備份',
+    lastExport:d=>`上次備份：${d}`, neverExport:'還沒有備份過',
+    exportTitle:'匯出備份', exportSub:(s,e)=>`${s} 個來源 · ${e} 筆紀錄 · 含所有設定`, csvTitle:'匯出帳目 CSV', csvSub:n=>`${n} 筆紀錄，按時間排序`,
+    download:'下載檔案', copy:'複製', copied:'已複製到剪貼簿', copyFail:'無法自動複製，已幫你全選，請手動複製',
+    downloadStarted:'已開始下載。如果沒有出現檔案，請改用「複製」',
+    exportNote:'部分 App 內的預覽會封鎖下載。如果按下載沒有反應，按「複製」後貼到備忘錄或傳給自己保存，之後在「匯入備份」貼上即可還原。',
+    csvNote:'CSV 含 UTF-8 標記，Excel 可直接開啟並正確顯示中文。「複製」會複製成表格格式，可直接貼到 Excel 或 Google 試算表。',
+    importTitle:'匯入備份', importSub:'選擇之前匯出的 .json 檔，或直接貼上備份內容。', chooseFile:'選擇檔案', pastePh:'在此貼上備份 JSON…', doImport:'匯入',
+    importNote:'匯入會取代目前所有來源、紀錄和設定，匯入後可按「復原」撤回。',
+    errJson:'內容不是有效的 JSON，請確認貼上的是完整的備份內容', errBackup:'這不是記帳本的備份檔，或來源資料格式不正確', errEmptyImport:'請先選擇檔案或貼上備份內容', errFileRead:'無法讀取這個檔案',
+    importConfirmTitle:'用備份取代目前資料？', importConfirmMsg:(s,e,d,cur)=>`備份內容：${s} 個來源、${e} 筆紀錄${d?`\n備份時間：${d}`:''}\n\n目前的 ${cur} 筆紀錄、所有來源和設定都會被取代。`, importConfirmOk:'取代並匯入',
+    importDone:(s,e)=>`已匯入 ${s} 個來源、${e} 筆紀錄`, importSkipped:n=>`，略過 ${n} 筆格式錯誤的紀錄`,
+    csvHead:['日期','時間','類型','來源','貨幣','金額','用途 / 資金來源','轉入來源','轉入貨幣','到帳金額','手續費','備註 / 說明'],
+    periodCustom:'自訂', rangeFrom:'開始', rangeTo:'結束', errRange:'結束時間必須晚於開始時間',
+    byUnit:{hour:'自訂範圍 · 按小時',day:'自訂範圍 · 按日',week:'自訂範圍 · 按週',month:'自訂範圍 · 按月'}, budgetTotal:'期間預算',
+    presets:{all:'全部',thisMonth:'本月',lastMonth:'上月',last30:'近 30 天',custom:'自訂'},
+    csvRangeLbl:'日期範圍', csvColsLbl:'匯出欄位', selectAll:'全選', selectNone:'全不選', csvNoCols:'請至少選擇一個欄位',
+    csvSubRange:(n,a,b)=>`${n} 筆紀錄 · ${a} – ${b}`,
+    csvCols:{date:'日期',time:'時間',type:'類型',source:'來源',cur:'貨幣',amount:'金額',label:'用途 / 資金來源',toSource:'轉入來源',toCur:'轉入貨幣',toAmount:'到帳金額',fee:'手續費',note:'備註 / 說明',signed:'收支金額（支出為負）'},
+    delConfirmTitle:k=>`刪除這筆${k}？`, delConfirmMsg:(n,a,w)=>`「${n}」${a}\n${w}\n\n刪除後各來源餘額會重新計算。`,
     budgetLine:'預算', budgetPer:{day:'每日預算',week:'每週預算',month:'本月預算'}, trend:'收支趨勢', periodDay:'日', periodWeek:'週', periodMonth:'月', income:'收入', net:'淨額',
     rangeDay:'近 14 天', rangeWeek:'近 12 週', rangeMonth:'近 12 個月', chartEmpty:'這段期間沒有收支紀錄', weekRange:(a,b)=>`${a} – ${b}`,
     curNames:{MOP:'澳門元',HKD:'港元',CNY:'人民幣',TWD:'新台幣',USD:'美元',JPY:'日圓',KRW:'韓圜',EUR:'歐元',GBP:'英鎊',SGD:'新加坡元',THB:'泰銖'}
@@ -712,6 +817,27 @@ const I18N = {
     budgetHint:'可以不设置。每种货币的预算各自独立，只计算当天用该货币的支出（含转账手续费）；超出预算仍可继续记账。',
     addBudget:'＋ 新增预算', budgetAmt:'每日预算', errBudgetCur:'预算的货币不能为空', errBudgetDup:c=>`${c} 的预算重复了`, errBudgetAmt:c=>`${c} 的预算必须大于 0`,
     budgetDayHint:(c,a,neg)=>`当天 ${c} 预算剩余 ${a}${neg?'（已超出）':''}`, removeBudget:'移除此预算',
+    backup:'备份与导出', backupHint:'数据只保存在这个浏览器里。定期导出 JSON 备份，清除浏览器数据或换设备时可完整还原来源、记录和设置；CSV 方便用 Excel 查看所有账目。',
+    exportJson:'导出备份 JSON', importJson:'导入备份', exportCsv:'导出账目 CSV', csvShort:'导出 CSV', haveBackup:'有备份文件？导入备份',
+    lastExport:d=>`上次备份：${d}`, neverExport:'还没有备份过',
+    exportTitle:'导出备份', exportSub:(s,e)=>`${s} 个来源 · ${e} 笔记录 · 含所有设置`, csvTitle:'导出账目 CSV', csvSub:n=>`${n} 笔记录，按时间排序`,
+    download:'下载文件', copy:'复制', copied:'已复制到剪贴板', copyFail:'无法自动复制，已帮你全选，请手动复制',
+    downloadStarted:'已开始下载。如果没有出现文件，请改用「复制」',
+    exportNote:'部分 App 内的预览会屏蔽下载。如果点下载没有反应，点「复制」后粘贴到备忘录或发给自己保存，之后在「导入备份」粘贴即可还原。',
+    csvNote:'CSV 含 UTF-8 标记，Excel 可直接打开并正确显示中文。「复制」会复制成表格格式，可直接粘贴到 Excel 或 Google 表格。',
+    importTitle:'导入备份', importSub:'选择之前导出的 .json 文件，或直接粘贴备份内容。', chooseFile:'选择文件', pastePh:'在此粘贴备份 JSON…', doImport:'导入',
+    importNote:'导入会替换当前所有来源、记录和设置，导入后可点「恢复」撤回。',
+    errJson:'内容不是有效的 JSON，请确认粘贴的是完整的备份内容', errBackup:'这不是记账本的备份文件，或来源数据格式不正确', errEmptyImport:'请先选择文件或粘贴备份内容', errFileRead:'无法读取这个文件',
+    importConfirmTitle:'用备份替换当前数据？', importConfirmMsg:(s,e,d,cur)=>`备份内容：${s} 个来源、${e} 笔记录${d?`\n备份时间：${d}`:''}\n\n当前的 ${cur} 笔记录、所有来源和设置都会被替换。`, importConfirmOk:'替换并导入',
+    importDone:(s,e)=>`已导入 ${s} 个来源、${e} 笔记录`, importSkipped:n=>`，跳过 ${n} 笔格式错误的记录`,
+    csvHead:['日期','时间','类型','来源','货币','金额','用途 / 资金来源','转入来源','转入货币','到账金额','手续费','备注 / 说明'],
+    periodCustom:'自定义', rangeFrom:'开始', rangeTo:'结束', errRange:'结束时间必须晚于开始时间',
+    byUnit:{hour:'自定义范围 · 按小时',day:'自定义范围 · 按日',week:'自定义范围 · 按周',month:'自定义范围 · 按月'}, budgetTotal:'期间预算',
+    presets:{all:'全部',thisMonth:'本月',lastMonth:'上月',last30:'近 30 天',custom:'自定义'},
+    csvRangeLbl:'日期范围', csvColsLbl:'导出字段', selectAll:'全选', selectNone:'全不选', csvNoCols:'请至少选择一个字段',
+    csvSubRange:(n,a,b)=>`${n} 笔记录 · ${a} – ${b}`,
+    csvCols:{date:'日期',time:'时间',type:'类型',source:'来源',cur:'货币',amount:'金额',label:'用途 / 资金来源',toSource:'转入来源',toCur:'转入货币',toAmount:'到账金额',fee:'手续费',note:'备注 / 说明',signed:'收支金额（支出为负）'},
+    delConfirmTitle:k=>`删除这笔${k}？`, delConfirmMsg:(n,a,w)=>`「${n}」${a}\n${w}\n\n删除后各来源余额会重新计算。`,
     budgetLine:'预算', budgetPer:{day:'每日预算',week:'每周预算',month:'本月预算'}, trend:'收支趋势', periodDay:'日', periodWeek:'周', periodMonth:'月', income:'收入', net:'净额',
     rangeDay:'近 14 天', rangeWeek:'近 12 周', rangeMonth:'近 12 个月', chartEmpty:'这段期间没有收支记录', weekRange:(a,b)=>`${a} – ${b}`,
     curNames:{MOP:'澳门元',HKD:'港元',CNY:'人民币',TWD:'新台币',USD:'美元',JPY:'日元',KRW:'韩元',EUR:'欧元',GBP:'英镑',SGD:'新加坡元',THB:'泰铢'}
@@ -757,6 +883,27 @@ const I18N = {
     budgetHint:'Optional. Each currency has its own budget and only counts that day’s spending in that currency (transfer fees included). You can keep adding entries after going over.',
     addBudget:'+ Add budget', budgetAmt:'Per day', errBudgetCur:'Budget currency can’t be empty', errBudgetDup:c=>`${c} has more than one budget`, errBudgetAmt:c=>`The ${c} budget must be greater than 0`,
     budgetDayHint:(c,a,neg)=>`${c} budget left that day: ${a}${neg?' (over)':''}`, removeBudget:'Remove this budget',
+    backup:'Backup & export', backupHint:'Your data lives only in this browser. Export a JSON backup now and then so you can restore every source, entry and setting after clearing browser data or switching devices. CSV is for viewing all entries in Excel.',
+    exportJson:'Export JSON backup', importJson:'Import backup', exportCsv:'Export entries CSV', csvShort:'Export CSV', haveBackup:'Have a backup? Import it',
+    lastExport:d=>`Last backup: ${d}`, neverExport:'No backup yet',
+    exportTitle:'Export backup', exportSub:(s,e)=>`${s} sources · ${e} entries · all settings`, csvTitle:'Export entries as CSV', csvSub:n=>`${n} entries, oldest first`,
+    download:'Download file', copy:'Copy', copied:'Copied to clipboard', copyFail:'Couldn’t copy automatically. The text is selected, so copy it manually',
+    downloadStarted:'Download started. If no file appears, use Copy instead',
+    exportNote:'Some in-app previews block downloads. If Download does nothing, tap Copy and paste it into a note or message to yourself. Paste it into Import backup to restore.',
+    csvNote:'The CSV includes a UTF-8 marker so Excel shows Chinese text correctly. Copy puts it on the clipboard as a table you can paste straight into Excel or Google Sheets.',
+    importTitle:'Import backup', importSub:'Choose a .json file you exported before, or paste the backup text.', chooseFile:'Choose file', pastePh:'Paste backup JSON here…', doImport:'Import',
+    importNote:'Importing replaces all current sources, entries and settings. You can Undo right after.',
+    errJson:'That isn’t valid JSON. Check that you pasted the whole backup', errBackup:'This isn’t a Ledger backup, or its sources are malformed', errEmptyImport:'Choose a file or paste a backup first', errFileRead:'Couldn’t read that file',
+    importConfirmTitle:'Replace current data with this backup?', importConfirmMsg:(s,e,d,cur)=>`Backup contains ${s} sources and ${e} entries${d?`\nBacked up: ${d}`:''}\n\nYour current ${cur} entries, all sources and settings will be replaced.`, importConfirmOk:'Replace & import',
+    importDone:(s,e)=>`Imported ${s} sources and ${e} entries`, importSkipped:n=>`; skipped ${n} malformed entries`,
+    csvHead:['Date','Time','Type','Source','Currency','Amount','Purpose / Income source','To source','To currency','Amount received','Fee','Note'],
+    periodCustom:'Custom', rangeFrom:'From', rangeTo:'To', errRange:'End must be after start',
+    byUnit:{hour:'Custom · hourly',day:'Custom · daily',week:'Custom · weekly',month:'Custom · monthly'}, budgetTotal:'Budget for period',
+    presets:{all:'All',thisMonth:'This month',lastMonth:'Last month',last30:'Last 30 days',custom:'Custom'},
+    csvRangeLbl:'Date range', csvColsLbl:'Columns', selectAll:'Select all', selectNone:'Clear all', csvNoCols:'Pick at least one column',
+    csvSubRange:(n,a,b)=>`${n} ${n===1?'entry':'entries'} · ${a} – ${b}`,
+    csvCols:{date:'Date',time:'Time',type:'Type',source:'Source',cur:'Currency',amount:'Amount',label:'Purpose / Income source',toSource:'To source',toCur:'To currency',toAmount:'Amount received',fee:'Fee',note:'Note',signed:'Net amount (spending negative)'},
+    delConfirmTitle:k=>`Delete this ${k.toLowerCase()}?`, delConfirmMsg:(n,a,w)=>`“${n}” ${a}\n${w}\n\nBalances will be recalculated.`,
     budgetLine:'Budget', budgetPer:{day:'Daily budget',week:'Weekly budget',month:'This month’s budget'}, trend:'Spending & income', periodDay:'Day', periodWeek:'Week', periodMonth:'Month', income:'Income', net:'Net',
     rangeDay:'Last 14 days', rangeWeek:'Last 12 weeks', rangeMonth:'Last 12 months', chartEmpty:'Nothing recorded in this period', weekRange:(a,b)=>`${a} – ${b}`,
     curNames:{MOP:'Macau pataca',HKD:'Hong Kong dollar',CNY:'Chinese yuan',TWD:'New Taiwan dollar',USD:'US dollar',JPY:'Japanese yen',KRW:'Korean won',EUR:'Euro',GBP:'British pound',SGD:'Singapore dollar',THB:'Thai baht'}
@@ -828,10 +975,12 @@ const TYPES = ['expense', 'topup', 'transfer'];
      轉賬 {type:'transfer', sourceId, cur, amount, fee, toId, toCur, toAmount, note, datetime}
    來源的 balance 是使用者設定的原始餘額，程式不會改寫；所有餘額都是即時計算出來顯示用。 */
 let sources, entries, settings;
-function load(){
-  sources  = store.get(KEY.sources, []);
-  entries  = store.get(KEY.entries, []);
-  settings = Object.assign({ defaultCur: 'MOP', lastSource: null, lastCur: null, accent: 'teal', mode: 'system', lang: detectLang() }, store.get(KEY.settings, {}));
+/* raw 有值時用匯入的資料，否則從 LocalStorage 讀取 */
+function load(raw){
+  sources  = raw ? raw.sources  : store.get(KEY.sources, []);
+  entries  = raw ? raw.entries  : store.get(KEY.entries, []);
+  settings = Object.assign({ defaultCur: 'MOP', lastSource: null, lastCur: null, accent: 'teal', mode: 'system', lang: detectLang() }, raw ? raw.settings : store.get(KEY.settings, {}));
+  if (!settings || typeof settings !== 'object') settings = {};
   if (!Array.isArray(sources)) sources = [];
   if (!Array.isArray(entries)) entries = [];
   if (!I18N[settings.lang]) settings.lang = 'zh-Hant';
@@ -1053,7 +1202,53 @@ function renderBudget(){
 let chartCur = null;
 let chartAnimate = true;
 let chartData = null;
-const PERIODS = ['day', 'week', 'month'];
+const PERIODS = ['day', 'week', 'month', 'custom'];
+/* 共用：快速範圍 & 日曆天數 */
+function presetRange(key){
+  const n = new Date(), y = n.getFullYear(), m = n.getMonth(), d = n.getDate();
+  const r = { thisMonth: [new Date(y, m, 1), new Date(y, m + 1, 0, 23, 59)],
+              lastMonth: [new Date(y, m - 1, 1), new Date(y, m, 0, 23, 59)],
+              last30:    [new Date(y, m, d - 29), new Date(y, m, d, 23, 59)] }[key];
+  return r ? r.map(toLocalInput) : null;
+}
+function calDays(start, end){
+  const a = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const l = new Date(end.getTime() - 1), b = new Date(l.getFullYear(), l.getMonth(), l.getDate());
+  return Math.round((b - a) / 86400000) + 1;
+}
+/* 自訂範圍：依長度自動選擇 小時 / 日 / 週 / 月 的區間 */
+function customBuckets(fromS, toS){
+  const from = parseDT(fromS), to = new Date(parseDT(toS).getTime() + 60000);
+  const spanH = (to - from) / 3600000, spanD = spanH / 24;
+  const unit = spanH <= 48 ? 'hour' : spanD <= 62 ? 'day' : spanD <= 182 ? 'week' : 'month';
+  let s;
+  if (unit === 'hour') s = new Date(from.getFullYear(), from.getMonth(), from.getDate(), from.getHours());
+  else if (unit === 'month') s = new Date(from.getFullYear(), from.getMonth(), 1);
+  else { s = new Date(from.getFullYear(), from.getMonth(), from.getDate()); if (unit === 'week') s.setDate(s.getDate() - ((s.getDay() + 6) % 7)); }
+  const next = d => unit === 'hour' ? new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours() + 1)
+                  : unit === 'day' ? new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)
+                  : unit === 'week' ? new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7)
+                  : new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  const out = [];
+  while (s < to && out.length < 400){
+    const e = next(s), a = s < from ? from : s, b = e > to ? to : e, first = !out.length;
+    let label, tip;
+    if (unit === 'hour'){
+      label = (first || s.getHours() === 0) ? md(s) : `${pad(s.getHours())}:00`;
+      tip = `${s.toLocaleDateString(LOCALE[lang], { month: 'short', day: 'numeric', weekday: 'short' })} ${pad(a.getHours())}:${pad(a.getMinutes())}–${pad(b.getHours())}:${pad(b.getMinutes())}`;
+    } else if (unit === 'day'){
+      label = md(s); tip = s.toLocaleDateString(LOCALE[lang], { month: 'short', day: 'numeric', weekday: 'short' });
+    } else if (unit === 'week'){
+      label = md(a); tip = t('weekRange', md(a), md(new Date(b.getTime() - 1)));
+    } else {
+      label = (first || s.getMonth() === 0) ? `${s.getFullYear()}/${s.getMonth() + 1}` : s.toLocaleDateString(LOCALE[lang], { month: 'short' });
+      tip = s.toLocaleDateString(LOCALE[lang], { year: 'numeric', month: 'long' });
+    }
+    out.push({ start: a, end: b, label, tip });
+    s = e;
+  }
+  return { bk: out, unit };
+}
 const parseDT = s => { const [ds, ts = '0:0'] = s.split('T'); const [y, m, d] = ds.split('-').map(Number); const [h, mi] = ts.split(':').map(Number); return new Date(y, m - 1, d, h || 0, mi || 0); };
 const md = d => `${d.getMonth() + 1}/${d.getDate()}`;
 function buckets(period){
@@ -1101,10 +1296,34 @@ function renderChart(){
   $('#chartCur').hidden = curs.length < 2;
   $('#chartCur').innerHTML = curs.map(c => `<button type="button" role="radio" aria-checked="${c === chartCur}" class="${c === chartCur ? 'on' : ''}" data-ccur="${esc(c)}">${esc(c)}</button>`).join('');
   $('#chartPeriod').innerHTML = PERIODS.map(p => { const k = 'period' + p[0].toUpperCase() + p.slice(1); return `<button type="button" role="radio" aria-checked="${p === period}" class="${p === period ? 'on' : ''}" data-period="${p}">${t(k)}</button>`; }).join('');
-  $('#chartRange').textContent = t({ day: 'rangeDay', week: 'rangeWeek', month: 'rangeMonth' }[period]);
+  // 自訂範圍
+  const isCustom = period === 'custom';
+  $('#chartRangeBox').hidden = !isCustom;
+  let bk, unit = period;
+  if (isCustom){
+    if (!settings.chartFrom || !settings.chartTo) [settings.chartFrom, settings.chartTo] = presetRange('last30');
+    const fi = $('#chartFrom'), ti = $('#chartTo');
+    if (document.activeElement !== fi) fi.value = settings.chartFrom;
+    if (document.activeElement !== ti) ti.value = settings.chartTo;
+    $('#chartPresets').innerHTML = ['thisMonth', 'lastMonth', 'last30'].map(k => {
+      const r = presetRange(k), on = r[0] === settings.chartFrom && r[1] === settings.chartTo;
+      return `<button type="button" data-preset="${k}" aria-pressed="${on}">${t('presets')[k]}</button>`;
+    }).join('');
+    const bad = !(settings.chartFrom < settings.chartTo);
+    $('#chartRangeErr').textContent = bad ? t('errRange') : '';
+    if (bad){
+      $('#chartRange').textContent = '';
+      $('#chartStats').innerHTML = ''; $('#chartSvg').innerHTML = ''; chartData = null;
+      return;
+    }
+    ({ bk, unit } = customBuckets(settings.chartFrom, settings.chartTo));
+    $('#chartRange').textContent = t('byUnit')[unit];
+  } else {
+    bk = buckets(period);
+    $('#chartRange').textContent = t({ day: 'rangeDay', week: 'rangeWeek', month: 'rangeMonth' }[period]);
+  }
 
   // 統計每個區間的支出（含手續費）與收入（增值）
-  const bk = buckets(period);
   bk.forEach(b => { b.exp = 0; b.inc = 0; });
   const first = bk[0].start, endAll = bk[bk.length - 1].end;
   for (const e of entries){
@@ -1115,9 +1334,9 @@ function renderChart(){
     if (b){ b.exp += spendOf(e); b.inc += topupOf(e); }
   }
   bk.forEach(b => { b.exp = r2(b.exp); b.inc = r2(b.inc); });
-  // 有設定該幣別的單日預算：日 = 預算，週 = 預算 × 7，月 = 預算 × 當月天數
-  const bud = budgetOf(chartCur);
-  bk.forEach(b => { b.bud = bud ? r2(bud.amount * Math.round((b.end - b.start) / 86400000)) : 0; });
+  // 有設定該幣別的單日預算：每個區間 = 單日預算 × 區間涵蓋的日曆天數（按小時檢視不顯示）
+  const bud = unit === 'hour' ? null : budgetOf(chartCur);
+  bk.forEach(b => { b.bud = bud ? r2(bud.amount * calDays(b.start, b.end)) : 0; });
   const totExp = r2(bk.reduce((a, b) => a + b.exp, 0)), totInc = r2(bk.reduce((a, b) => a + b.inc, 0)), net = r2(totInc - totExp);
 
   // 顏色：支出用警示紅；收入用主題色（主題色本身偏紅 / 橙時改用青綠以免撞色）
@@ -1127,7 +1346,7 @@ function renderChart(){
   $('#chartStats').innerHTML = `
     <span><span class="lg" style="--c:${expC}"></span>${t('sumOut')}<b>${fmt(totExp, chartCur)}</b></span>
     <span><span class="lg" style="--c:${incC}"></span>${t('income')}<b>${fmt(totInc, chartCur)}</b></span>
-    ${bud ? `<span><span class="lg dash" style="--c:var(--muted)"></span>${t('budgetPer')[period]}<b>${fmt(bk[bk.length - 1].bud, chartCur)}</b></span>` : ''}
+    ${bud ? `<span><span class="lg dash" style="--c:var(--muted)"></span>${isCustom ? t('budgetTotal') : t('budgetPer')[period]}<b>${fmt(isCustom ? bk.reduce((a, b) => a + b.bud, 0) : bk[bk.length - 1].bud, chartCur)}</b></span>` : ''}
     <span>${t('net')}<b class="${net < 0 ? 'neg' : ''}">${net > 0 ? '+' : ''}${fmt(net, chartCur)}</b></span>`;
 
   // 繪圖
@@ -1136,7 +1355,7 @@ function renderChart(){
   const H = W < 520 ? 200 : 230;
   const padL = 40, padR = 10, padT = 12, padB = 24;
   const n = bk.length, max = niceMax(Math.max(...bk.map(b => Math.max(b.exp, b.inc, b.bud))));
-  const x = i => padL + i * (W - padL - padR) / (n - 1);
+  const x = i => n === 1 ? (padL + W - padR) / 2 : padL + i * (W - padL - padR) / (n - 1);
   const y = v => padT + (1 - v / max) * (H - padT - padB);
   const base = y(0);
   let g = '';
@@ -1172,7 +1391,7 @@ function chartPoint(ev){
   const svg = $('#chartSvg'), rect = svg.getBoundingClientRect();
   const sx = (ev.clientX - rect.left) * chartData.W / rect.width;
   const { n, padL, padR, W, x, bk } = chartData;
-  const i = Math.max(0, Math.min(n - 1, Math.round((sx - padL) / ((W - padL - padR) / (n - 1)))));
+  const i = n === 1 ? 0 : Math.max(0, Math.min(n - 1, Math.round((sx - padL) / ((W - padL - padR) / (n - 1)))));
   const b = bk[i], px = x(i);
   const guide = $('#chartGuide');
   guide.setAttribute('x1', px); guide.setAttribute('x2', px); guide.classList.add('show');
@@ -1197,6 +1416,16 @@ $('#chartPeriod').addEventListener('click', e => {
   const b = e.target.closest('[data-period]'); if (!b) return;
   settings.chartPeriod = b.dataset.period; saveSettings(); chartAnimate = true; renderChart();
 });
+$('#chartPresets').addEventListener('click', e => {
+  const b = e.target.closest('[data-preset]'); if (!b) return;
+  [settings.chartFrom, settings.chartTo] = presetRange(b.dataset.preset);
+  saveSettings(); chartAnimate = true; renderChart();
+});
+['#chartFrom', '#chartTo'].forEach(sel => $(sel).addEventListener('change', () => {
+  const v = $(sel).value; if (!v) return;
+  settings[sel === '#chartFrom' ? 'chartFrom' : 'chartTo'] = v;
+  saveSettings(); chartAnimate = true; renderChart();
+}));
 $('#chartCur').addEventListener('click', e => {
   const b = e.target.closest('[data-ccur]'); if (!b) return;
   chartCur = b.dataset.ccur; chartAnimate = true; renderChart();
@@ -1301,7 +1530,7 @@ function renderEntries(){
 
 function render(){
   if (filterSource !== 'all' && !srcById(filterSource)) filterSource = 'all';
-  renderSummary(); renderBudget(); renderSources(); renderChart(); renderFilters(); renderEntries();
+  renderSummary(); renderBudget(); renderSources(); renderChart(); renderFilters(); renderEntries(); renderBackupInfo();
 }
 
 /* ---------- 嵌入偵測 ---------- */
@@ -1343,7 +1572,7 @@ function closeModal(m){
     if (!document.querySelector('.modal.show')) document.body.classList.remove('locked');
   }, 320);
 }
-['#entryModal', '#settingsModal'].forEach(sel => {
+['#entryModal', '#settingsModal', '#ioModal'].forEach(sel => {
   const m = $(sel);
   m.addEventListener('click', e => {
     if (e.target.closest('[data-close]') && m.dataset.locked !== '1') closeModal(m);
@@ -1366,6 +1595,7 @@ $('#cOk').addEventListener('click', () => settleConfirm(true));
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if ($('#confirmModal').classList.contains('show')) return settleConfirm(false);
+  if ($('#ioModal').classList.contains('show')) return closeModal($('#ioModal'));
   if ($('#entryModal').classList.contains('show')) return closeModal($('#entryModal'));
   const sm = $('#settingsModal');
   if (sm.classList.contains('show') && sm.dataset.locked !== '1') closeModal(sm);
@@ -1540,12 +1770,33 @@ function openEntry(id, type){
   if (window.matchMedia('(hover:hover)').matches) setTimeout(() => $('#fAmount').focus(), 120);
 }
 
-function deleteEntry(id){
+/* 刪除前先確認；確認後仍保留「復原」 */
+function entrySummary(e){
+  if (e.type === 'transfer'){
+    const fee = e.fee ? ` + ${t('fee')} ${fmt(e.fee, e.cur)}` : '';
+    const recv = e.toCur !== e.cur ? ` → ${fmt(e.toAmount, e.toCur)}` : '';
+    return `${fmt(e.amount, e.cur)}${recv}${fee}`;
+  }
+  return `${e.type === 'topup' ? '+' : '-'}${fmt(e.amount, e.cur)}`;
+}
+async function confirmDelete(id){
+  const e = entries.find(x => x.id === id);
+  if (!e) return false;
+  const when = `${dayLabel(e.datetime.slice(0, 10))} ${e.datetime.slice(11, 16)}`;
+  return confirmBox({
+    title: t('delConfirmTitle', t(e.type)),
+    message: t('delConfirmMsg', titleOf(e), entrySummary(e), when),
+    ok: t('del')
+  });
+}
+async function deleteEntry(id, confirmed){
+  if (!confirmed && !(await confirmDelete(id))) return false;
   const idx = entries.findIndex(e => e.id === id);
-  if (idx < 0) return;
+  if (idx < 0) return false;
   const [removed] = entries.splice(idx, 1);
   saveEntries(); render();
   toast(t('toastDeleted', titleOf(removed)), '', { label: t('restore'), fn(){ entries.push(removed); saveEntries(); flashId = removed.id; render(); } });
+  return true;
 }
 
 $('#entryForm').addEventListener('submit', ev => {
@@ -1628,7 +1879,12 @@ $('#fOrigin').addEventListener('input', renderQuick);
 ['#fAmount', '#fFee', '#fReceived'].forEach(s => $(s).addEventListener('input', updateHint));
 $('#btnNow').addEventListener('click', () => { $('#fDate').value = toLocalInput(new Date()); updateHint(); });
 $('#fDate').addEventListener('change', updateHint);
-$('#btnDeleteEntry').addEventListener('click', () => { const id = editingId; closeModal($('#entryModal')); deleteEntry(id); });
+$('#btnDeleteEntry').addEventListener('click', async () => {
+  const id = editingId;
+  if (!(await confirmDelete(id))) return;   // 取消就留在編輯視窗
+  closeModal($('#entryModal'));
+  deleteEntry(id, true);
+});
 
 /* ---------- 設定 ---------- */
 let draft = [];
@@ -1638,6 +1894,8 @@ const defCur = () => normCur($('#fDefCur').value) || settings.defaultCur || 'MOP
 const newBal = cur => ({ id: uid(), cur: cur || defCur(), orig: null, amount: '', removed: false });
 
 function renderSettingsText(){
+  $('#setupImport').hidden = !setupMode;
+  renderBackupInfo();
   $('#settingsTitle').textContent = t(setupMode ? 'setupTitle' : 'settings');
   $('#settingsSub').textContent = t(setupMode ? 'setupSub' : 'settingsSub');
   $('#btnSaveSettings').textContent = t(setupMode ? 'setupDone' : 'save');
@@ -1843,6 +2101,230 @@ $('#btnReset').addEventListener('click', async () => {
   openSettings(true);
   toast(t('resetDone'));
 });
+
+/* ---------- 備份（JSON）與匯出（CSV） ---------- */
+let ioMode = null, ioPayload = '', ioCopyText = '';
+const stamp = () => { const d = new Date(); return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`; };
+const fmtWhen = v => { const d = new Date(v); return isNaN(d) ? '' : d.toLocaleString(LOCALE[lang], { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
+function renderBackupInfo(){
+  $('#lastExportInfo').textContent = settings.lastExport ? t('lastExport', fmtWhen(settings.lastExport)) : t('neverExport');
+  $('#btnExportJson').hidden = $('#btnExportCsv').hidden = !sources.length;
+  $('#btnCsvQuick').hidden = !entries.some(valid);
+}
+function markExported(){ settings.lastExport = Date.now(); saveSettings(); renderBackupInfo(); }
+
+function buildBackup(){
+  return JSON.stringify({ app: 'ledger-book', version: 1, exportedAt: new Date().toISOString(), sources, entries, settings }, null, 2);
+}
+/* CSV：可選日期範圍與欄位 */
+const CSV_COLS = ['date', 'time', 'type', 'source', 'cur', 'amount', 'label', 'toSource', 'toCur', 'toAmount', 'fee', 'note', 'signed'];
+const CSV_DEFAULT = CSV_COLS.filter(k => k !== 'signed');
+const CSV_RANGES = ['all', 'thisMonth', 'lastMonth', 'last30', 'custom'];
+function csvCol(e, k){
+  const tr = e.type === 'transfer';
+  switch (k){
+    case 'date': return e.datetime.slice(0, 10);
+    case 'time': return e.datetime.slice(11, 16);
+    case 'type': return t(e.type);
+    case 'source': return srcById(e.sourceId).name;
+    case 'cur': return e.cur;
+    case 'amount': return e.amount;
+    case 'label': return e.type === 'expense' ? e.purpose : (e.type === 'topup' ? e.origin : '');
+    case 'toSource': return tr ? srcById(e.toId).name : '';
+    case 'toCur': return tr ? e.toCur : '';
+    case 'toAmount': return tr ? e.toAmount : '';
+    case 'fee': return tr ? (e.fee || 0) : '';
+    case 'note': return e.note || '';
+    case 'signed': return e.type === 'topup' ? e.amount : -r2(spendOf(e));
+  }
+  return '';
+}
+function csvState(){
+  const range = CSV_RANGES.includes(settings.csvRange) ? settings.csvRange : 'all';
+  const cols = Array.isArray(settings.csvCols) ? CSV_COLS.filter(k => settings.csvCols.includes(k)) : CSV_DEFAULT.slice();
+  if (!settings.csvFrom || !settings.csvTo) [settings.csvFrom, settings.csvTo] = presetRange('thisMonth');
+  const bounds = range === 'all' ? null : (range === 'custom' ? [settings.csvFrom, settings.csvTo] : presetRange(range));
+  return { range, cols, bounds };
+}
+function csvRows(){
+  const { cols, bounds } = csvState();
+  const rows = [cols.map(k => t('csvCols')[k])];
+  entries.filter(valid)
+    .filter(e => !bounds || (e.datetime.slice(0, 16) >= bounds[0] && e.datetime.slice(0, 16) <= bounds[1]))
+    .sort((a, b) => a.datetime.localeCompare(b.datetime))
+    .forEach(e => rows.push(cols.map(k => csvCol(e, k))));
+  return rows;
+}
+function renderCsvOpts(){
+  const { range, cols } = csvState();
+  $('#csvRange').innerHTML = CSV_RANGES.map(k => `<button type="button" role="radio" aria-checked="${k === range}" class="${k === range ? 'on' : ''}" data-crange="${k}">${t('presets')[k]}</button>`).join('');
+  $('#csvCustom').hidden = range !== 'custom';
+  if (document.activeElement !== $('#csvFrom')) $('#csvFrom').value = settings.csvFrom;
+  if (document.activeElement !== $('#csvTo')) $('#csvTo').value = settings.csvTo;
+  $('#csvColsBox').innerHTML = CSV_COLS.map(k => `<button type="button" data-col="${k}" aria-pressed="${cols.includes(k)}">${esc(t('csvCols')[k])}</button>`).join('');
+  $('#csvAll').textContent = t(cols.length === CSV_COLS.length ? 'selectNone' : 'selectAll');
+}
+function refreshCsv(){
+  const { range, cols, bounds } = csvState();
+  const bad = range === 'custom' && !(settings.csvFrom < settings.csvTo);
+  $('#csvRangeErr').textContent = bad ? t('errRange') : '';
+  const none = !cols.length;
+  const rows = bad || none ? [] : csvRows();
+  ioPayload = rows.length ? toCSV(rows) : ''; ioCopyText = rows.length ? toTSV(rows) : '';
+  const n = Math.max(0, rows.length - 1);
+  $('#ioSub').textContent = bounds && !bad ? t('csvSubRange', n, bounds[0].replace('T', ' '), bounds[1].replace('T', ' ')) : t('csvSub', n);
+  $('#ioError').textContent = none ? t('csvNoCols') : '';
+  $('#btnIoMain').disabled = $('#btnCopy').disabled = bad || none;
+  const ta = $('#ioText'); ta.value = ioPayload; ta.scrollTop = 0;
+}
+$('#csvRange').addEventListener('click', e => {
+  const b = e.target.closest('[data-crange]'); if (!b) return;
+  settings.csvRange = b.dataset.crange; saveSettings(); renderCsvOpts(); refreshCsv();
+});
+['#csvFrom', '#csvTo'].forEach(sel => $(sel).addEventListener('change', () => {
+  const v = $(sel).value; if (!v) return;
+  settings[sel === '#csvFrom' ? 'csvFrom' : 'csvTo'] = v; saveSettings(); refreshCsv();
+}));
+$('#csvColsBox').addEventListener('click', e => {
+  const b = e.target.closest('[data-col]'); if (!b) return;
+  const { cols } = csvState(), k = b.dataset.col;
+  settings.csvCols = cols.includes(k) ? cols.filter(x => x !== k) : [...cols, k];
+  saveSettings(); renderCsvOpts(); refreshCsv();
+});
+$('#csvAll').addEventListener('click', () => {
+  settings.csvCols = csvState().cols.length === CSV_COLS.length ? [] : CSV_COLS.slice();
+  saveSettings(); renderCsvOpts(); refreshCsv();
+});
+/* 文字欄位以 = + - @ 開頭時加上 ' ，避免 Excel 當成公式 */
+const csvCell = v => {
+  if (typeof v === 'number') return String(v);
+  v = String(v ?? '');
+  if (/^[=+\-@\t\r]/.test(v)) v = "'" + v;
+  return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+};
+const toCSV = rows => rows.map(r => r.map(csvCell).join(',')).join('\r\n');
+const toTSV = rows => rows.map(r => r.map(c => String(c ?? '').replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\n');
+
+function downloadText(name, text, mime){
+  try {
+    const url = URL.createObjectURL(new Blob([text], { type: mime }));
+    const a = document.createElement('a');
+    a.href = url; a.download = name; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    return true;
+  } catch(e){ return false; }
+}
+function ioErr(key){ const el = $('#ioError'); el.textContent = ''; void el.offsetWidth; el.textContent = t(key); }
+
+function openIO(mode){
+  ioMode = mode;
+  const imp = mode === 'import', ta = $('#ioText');
+  $('#ioError').textContent = '';
+  $('#ioFileRow').hidden = !imp;
+  $('#csvOpts').hidden = mode !== 'csv';
+  $('#btnIoMain').disabled = $('#btnCopy').disabled = false;
+  $('#ioFileName').textContent = '';
+  $('#ioFile').value = '';
+  $('#btnCopy').hidden = imp;
+  $('#ioClose').textContent = t(imp ? 'cancel' : 'close');
+  ta.readOnly = !imp;
+  ta.placeholder = imp ? t('pastePh') : '';
+  if (mode === 'json'){
+    ioPayload = ioCopyText = buildBackup();
+    $('#ioTitle').textContent = t('exportTitle');
+    $('#ioSub').textContent = t('exportSub', sources.length, entries.length);
+    $('#ioNote').textContent = t('exportNote');
+    $('#btnIoMain').textContent = t('download') + ' .json';
+  } else if (mode === 'csv'){
+    $('#ioTitle').textContent = t('csvTitle');
+    $('#ioNote').textContent = t('csvNote');
+    $('#btnIoMain').textContent = t('download') + ' .csv';
+    renderCsvOpts(); refreshCsv();
+  } else {
+    ioPayload = ioCopyText = '';
+    $('#ioTitle').textContent = t('importTitle');
+    $('#ioSub').textContent = t('importSub');
+    $('#ioNote').textContent = t('importNote');
+    $('#btnIoMain').textContent = t('doImport');
+  }
+  if (mode !== 'csv'){ ta.value = ioPayload; ta.scrollTop = 0; }
+  openModal($('#ioModal'));
+}
+
+$('#btnIoMain').addEventListener('click', () => {
+  if (ioMode === 'import') return doImport();
+  const ok = ioMode === 'json'
+    ? downloadText(`ledger-backup-${stamp()}.json`, ioPayload, 'application/json')
+    : downloadText(`ledger-entries-${(b => b ? b.map(x => x.slice(0, 10).replace(/-/g, '')).join('-') : stamp())(csvState().bounds)}.csv`, '﻿' + ioPayload, 'text/csv;charset=utf-8');
+  if (ioMode === 'json' && ok) markExported();
+  toast(t('downloadStarted'));
+});
+$('#btnCopy').addEventListener('click', () => {
+  const fallback = () => {
+    const ta = $('#ioText'); ta.focus(); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch(e){}
+    if (ok){ toast(t('copied')); if (ioMode === 'json') markExported(); }
+    else toast(t('copyFail'), 'error');
+  };
+  if (!navigator.clipboard || !navigator.clipboard.writeText) return fallback();
+  navigator.clipboard.writeText(ioCopyText).then(() => { toast(t('copied')); if (ioMode === 'json') markExported(); }, fallback);
+});
+$('#btnChooseFile').addEventListener('click', () => $('#ioFile').click());
+$('#ioFile').addEventListener('change', async () => {
+  const f = $('#ioFile').files[0]; if (!f) return;
+  try {
+    const text = await f.text();
+    $('#ioText').value = text;
+    $('#ioFileName').textContent = f.name;
+    $('#ioError').textContent = '';
+  } catch(e){ ioErr('errFileRead'); }
+});
+
+function parseBackup(text){
+  let d;
+  try { d = JSON.parse(text.replace(/^﻿/, '')); } catch(e){ throw new Error('errJson'); }
+  if (!d || typeof d !== 'object' || !Array.isArray(d.sources) || !d.sources.length) throw new Error('errBackup');
+  const num = v => typeof v === 'number' && isFinite(v);
+  const okSrc = s => s && typeof s.id === 'string' && typeof s.name === 'string' &&
+    (Array.isArray(s.balances) ? s.balances.length && s.balances.every(b => b && typeof b.cur === 'string' && b.cur.trim() && num(b.amount)) : num(s.balance));
+  if (!d.sources.every(okSrc)) throw new Error('errBackup');
+  d.sources.forEach(s => { if (Array.isArray(s.balances)) s.balances.forEach(b => { if (!b.id) b.id = uid(); b.cur = normCur(b.cur); }); });
+  const raw = Array.isArray(d.entries) ? d.entries : [];
+  const ents = raw.filter(e => e && typeof e.id === 'string' && typeof e.sourceId === 'string' && num(e.amount) && e.amount >= 0 &&
+    typeof e.datetime === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(e.datetime) &&
+    (e.type !== 'transfer' || (typeof e.toId === 'string' && typeof e.toCur === 'string' && num(e.toAmount))));
+  return { sources: d.sources, entries: ents, settings: d.settings && typeof d.settings === 'object' ? d.settings : {}, exportedAt: d.exportedAt, skipped: raw.length - ents.length };
+}
+function applyData(d){
+  load(d);
+  saveSources(); saveEntries(); saveSettings();
+  filterSource = 'all'; filterType = 'all'; query = ''; $('#search').value = '';
+  firstPaint = true; chartAnimate = true;
+  applyTheme(); applyLang(); render();
+}
+async function doImport(){
+  const text = $('#ioText').value.trim();
+  if (!text) return ioErr('errEmptyImport');
+  let b;
+  try { b = parseBackup(text); } catch(e){ return ioErr(e.message); }
+  const hadData = sources.length > 0;
+  if (hadData){
+    const ok = await confirmBox({ title: t('importConfirmTitle'), message: t('importConfirmMsg', b.sources.length, b.entries.length, b.exportedAt ? fmtWhen(b.exportedAt) : '', entries.length), ok: t('importConfirmOk') });
+    if (!ok) return;
+  }
+  const snap = JSON.parse(JSON.stringify({ sources, entries, settings }));
+  applyData(b);
+  closeModal($('#ioModal'));
+  const sm = $('#settingsModal'); sm.dataset.locked = '0'; closeModal(sm);
+  toast(t('importDone', b.sources.length, b.entries.length) + (b.skipped ? t('importSkipped', b.skipped) : ''), '',
+    hadData ? { label: t('restore'), fn(){ applyData(snap); } } : undefined);
+}
+$('#btnExportJson').addEventListener('click', () => openIO('json'));
+$('#btnImportJson').addEventListener('click', () => openIO('import'));
+$('#setupImport').addEventListener('click', () => openIO('import'));
+$('#btnExportCsv').addEventListener('click', () => openIO('csv'));
+$('#btnCsvQuick').addEventListener('click', () => openIO('csv'));
 
 /* ---------- 頁面事件 ---------- */
 $('#btnSettings').addEventListener('click', () => openSettings(false));
